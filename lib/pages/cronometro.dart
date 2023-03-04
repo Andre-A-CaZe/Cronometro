@@ -37,17 +37,48 @@ class _CronometroState extends State<Cronometro> {
   }
 
   void reiniciarTiempo() {
-    this.milisegundo = 0;
     setState(() {
+      this.milisegundo = 0;
       laps.clear();
     });
   }
 
   void vueltaCronometro() {
-    String lap = formatearTiempo();
-    setState(() {
-      laps.add(lap);
-    });
+    if (laps.isNotEmpty) {
+      String lap = formatearDiferenciaTiempo(laps.last);
+      setState(() {
+        laps.add(lap);
+      });
+    } else {
+      String lap = formatearTiempo();
+      setState(() {
+        laps.add(lap);
+      });
+    }
+  }
+
+  String formatearDiferenciaTiempo(String lapAnterior) {
+    Duration duracionAnterior = Duration(
+      hours: int.parse(lapAnterior.substring(0, 2)),
+      minutes: int.parse(lapAnterior.substring(3, 5)),
+      seconds: int.parse(lapAnterior.substring(6, 8)),
+      milliseconds: int.parse(lapAnterior.substring(9, 11)) * 10,
+    );
+
+    Duration duracionActual = Duration(milliseconds: this.milisegundo);
+    Duration diferencia = duracionActual - duracionAnterior;
+
+    String dosValores(int valor) {
+      return valor >= 10 ? "$valor" : "0$valor";
+    }
+
+    String horas = dosValores(diferencia.inHours);
+    String minutos = dosValores(diferencia.inMinutes.remainder(60));
+    String segundos = dosValores(diferencia.inSeconds.remainder(60));
+    String milisegundos =
+        dosValores(diferencia.inMilliseconds.remainder(1000)).substring(0, 2);
+
+    return "$horas:$minutos:$segundos:$milisegundos";
   }
 
   String formatearTiempo() {
@@ -62,7 +93,6 @@ class _CronometroState extends State<Cronometro> {
     String segundos = dosValores(duration.inSeconds.remainder(60));
     String milisegundos =
         dosValores(duration.inMilliseconds.remainder(1000)).substring(0, 2);
-    //tiempo = "$horas:$minutos:$segundos:$milisegundos";
     return "$horas:$minutos:$segundos:$milisegundos";
   }
 
