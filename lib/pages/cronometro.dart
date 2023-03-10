@@ -16,7 +16,8 @@ class _CronometroState extends State<Cronometro> {
   int milisegundo = 0;
   bool estaCorriendo = false;
   late Timer timer;
-  List laps = [];
+  List<Duration> laps = [];
+  Duration tiempoPrev = Duration.zero;
 
   void iniciarCronometro() {
     if (!estaCorriendo) {
@@ -39,60 +40,29 @@ class _CronometroState extends State<Cronometro> {
   void reiniciarTiempo() {
     setState(() {
       this.milisegundo = 0;
+      tiempoPrev = Duration.zero;
       laps.clear();
     });
   }
 
   void vueltaCronometro() {
-    if (laps.isNotEmpty) {
-      String lap = formatearDiferenciaTiempo(laps.last);
-      setState(() {
-        laps.add(lap);
-      });
-    } else {
-      String lap = formatearTiempo();
-      setState(() {
-        laps.add(lap);
-      });
+    if (estaCorriendo) {
+      Duration tiempoActual = Duration(milliseconds: milisegundo);
+      laps.insert(0, tiempoActual - tiempoPrev);
+      tiempoPrev = tiempoActual;
     }
   }
 
-  String formatearDiferenciaTiempo(String lapAnterior) {
-    Duration duracionAnterior = Duration(
-      hours: int.parse(lapAnterior.substring(0, 2)),
-      minutes: int.parse(lapAnterior.substring(3, 5)),
-      seconds: int.parse(lapAnterior.substring(6, 8)),
-      milliseconds: int.parse(lapAnterior.substring(9, 11)) * 10,
-    );
-
-    Duration duracionActual = Duration(milliseconds: this.milisegundo);
-    Duration diferencia = duracionActual - duracionAnterior;
-
+  String formatearTiempo(Duration d) {
     String dosValores(int valor) {
       return valor >= 10 ? "$valor" : "0$valor";
     }
 
-    String horas = dosValores(diferencia.inHours);
-    String minutos = dosValores(diferencia.inMinutes.remainder(60));
-    String segundos = dosValores(diferencia.inSeconds.remainder(60));
+    String horas = dosValores(d.inHours);
+    String minutos = dosValores(d.inMinutes.remainder(60));
+    String segundos = dosValores(d.inSeconds.remainder(60));
     String milisegundos =
-        dosValores(diferencia.inMilliseconds.remainder(1000)).substring(0, 2);
-
-    return "$horas:$minutos:$segundos:$milisegundos";
-  }
-
-  String formatearTiempo() {
-    Duration duration = Duration(milliseconds: this.milisegundo);
-
-    String dosValores(int valor) {
-      return valor >= 10 ? "$valor" : "0$valor";
-    }
-
-    String horas = dosValores(duration.inHours);
-    String minutos = dosValores(duration.inMinutes.remainder(60));
-    String segundos = dosValores(duration.inSeconds.remainder(60));
-    String milisegundos =
-        dosValores(duration.inMilliseconds.remainder(1000)).substring(0, 2);
+        dosValores(d.inMilliseconds.remainder(1000)).substring(0, 2);
     return "$horas:$minutos:$segundos:$milisegundos";
   }
 
@@ -104,11 +74,13 @@ class _CronometroState extends State<Cronometro> {
 
   @override
   Widget build(BuildContext context) {
+    List<Duration> lista = List.from(laps);
+    lista.insert(0, Duration(milliseconds: milisegundo) - tiempoPrev);
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          formatearTiempo(),
+          formatearTiempo(Duration(milliseconds: milisegundo)),
           style: const TextStyle(fontSize: 50, color: Colors.black),
         ),
         Row(
@@ -122,6 +94,15 @@ class _CronometroState extends State<Cronometro> {
                   color: Colors.black,
                 ),
                 onPressed: iniciarCronometro),
+            CupertinoButton(
+                child: Icon(
+                  Icons.flag,
+                  size: 60,
+                  color: Colors.black,
+                ),
+                onPressed: () {
+                  vueltaCronometro();
+                }),
             CupertinoButton(
                 child: Icon(
                   Icons.stop_circle_outlined,
@@ -138,15 +119,6 @@ class _CronometroState extends State<Cronometro> {
                 onPressed: () {
                   reiniciarTiempo();
                 }),
-            CupertinoButton(
-                child: Icon(
-                  Icons.redo_outlined,
-                  size: 60,
-                  color: Colors.black,
-                ),
-                onPressed: () {
-                  vueltaCronometro();
-                }),
           ],
         ),
         SizedBox(
@@ -160,20 +132,31 @@ class _CronometroState extends State<Cronometro> {
             borderRadius: BorderRadius.circular(8.0),
           ),
           child: ListView.builder(
-              itemCount: laps.length,
+              itemCount: lista.length,
               itemBuilder: (context, index) {
+                Duration tv = lista[index];
+                Duration ta = Duration(
+                    milliseconds: lista.sublist(index).fold<int>(
+                        0,
+                        (previousValue, element) =>
+                            previousValue + element.inMilliseconds));
                 return Padding(
                   padding: EdgeInsets.all(16.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        "Vuelta ${index + 1}",
+                        "Vuelta ${lista.length - index}",
                         style: const TextStyle(
                             color: Colors.black, fontSize: 16.0),
                       ),
                       Text(
-                        "${laps[index]}",
+                        formatearTiempo(tv),
+                        style: const TextStyle(
+                            color: Colors.black, fontSize: 16.0),
+                      ),
+                      Text(
+                        formatearTiempo(ta),
                         style: const TextStyle(
                             color: Colors.black, fontSize: 16.0),
                       )
